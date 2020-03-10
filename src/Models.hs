@@ -25,6 +25,7 @@ share
   [persistLowerCase|
 User
     name Text
+    UniqueName name
     age Int
     deriving Show
 |]
