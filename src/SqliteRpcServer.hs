@@ -39,7 +39,7 @@ type SqlConn = Text -- mk as text like from those blogpost
 type SqlLayer = ReaderT SqlBackend (LoggingT (ResourceT IO))
 
 instance UserStorage (ExceptT RpcError SqlLayer) where
-  saveUser = lift . insert_ -- todo handle sql errors
+  saveUser = lift . insert_ -- todo handle sql errors, how?
   getAll = fmap entityVal <$> lift (selectList [] [])
 
 instance CheckUser (ExceptT RpcError SqlLayer) where
