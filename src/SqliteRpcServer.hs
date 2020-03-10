@@ -27,7 +27,8 @@ import           Control.Monad.Except       (ExceptT, throwError)
 import           Data.Aeson                 (ToJSON, object, toJSON, (.=))
 import           Data.Bool                  (bool)
 import           Data.Maybe                 (fromMaybe)
-import           Database.Persist           (entityVal, insert_, selectList)
+import           Database.Persist           (entityVal, insert, insert_,
+                                             selectList)
 import           Database.Persist.Sql       (SqlBackend)
 import           Database.Persist.Sqlite    (runMigration, runSqlConn,
                                              withSqliteConn)
@@ -37,10 +38,14 @@ type SqlConn = Text -- mk as text like from those blogpost
 
 type SqlLayer = ReaderT SqlBackend (LoggingT (ResourceT IO))
 
-instance UserStorage (ExceptT RpcError SqlLayer) where --todo maybe just SqlLayer will be enough?
-  saveUser u = lift action
+instance UserStorage (ExceptT RpcError SqlLayer) where
+  saveUser u = do
+    r <- lift $ try (insert u)
+    either onError onSuccess r
     where
-      action = (insert_ u >> return (Right u)) `catch` (\(e :: SomeException) -> return (Left . SqlFail . toText $ e))
+      onError (e :: SomeException) =
+        logErrorN (toText e) >> throwError (rpcError (-32001) "Failed to add user. Error UUID = XXX")
+      onSuccess uId = logInfoN (mconcat ["New user added with ID ", toText . getId $ uId])
 
 --  getAll = fmap entityVal <$> lift (selectList [] [])
 --  getAll = lift act where
@@ -48,7 +53,7 @@ instance UserStorage (ExceptT RpcError SqlLayer) where --todo maybe just SqlLaye
 instance CheckUser (ExceptT RpcError SqlLayer) where
   validateAge a = do
     unless (isLegalAge a) $ throwError (rpcError (-32000) (toText $ IllegalUserAge a))
-    return (Right $ ValidAge a)
+    return $ ValidAge a
 
 methods :: [Method SqlLayer]
 --methods = [addUserMet, listUsers]
@@ -56,12 +61,10 @@ methods = [addUserMet]
 
 addUserMet = toMethod "addUser" f (Required "name" :+: Required "age" :+: ())
   where
-    reportError e = logErrorN (toText e) >> throwError (rpcError (-32001) "Failed to add user. Error UUID = XXX")
-    success message u = logInfoN (mconcat [message, " : ", toText u]) >> return message
     f :: String -> Int -> RpcResult SqlLayer Text
     f uName uAge = do
-      u <- createUser (pack uName) uAge
-      either reportError (success "User added") u
+      createUser (pack uName) uAge
+      return "User added"
 
 --listUsers = toMethod "list" _  () where
 --  act = (getAll :: RpcResult SqlLayer [User])
@@ -80,6 +83,7 @@ runSqliteServer = do
       liftIO $ print "Enter commands:"
       forever $ -- todo exit command
        do
-        cmd <- B.pack <$> liftIO getLine
-        r <- call methods cmd
+        cmd <- liftIO getLine
+        logInfoN $ mconcat ["RPC call: ", pack cmd]
+        r <- call methods (B.pack cmd)
         liftIO (printRpcResult r)

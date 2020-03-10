@@ -9,15 +9,13 @@ data AppError =
   deriving (Show)
 
 class UserStorage m where
-  saveUser :: User -> m (Either AppError User)
-  getAll :: m (Either AppError [User])
+  saveUser :: User -> m ()
+  getAll :: m [User]
   
 class CheckUser m where
-  validateAge :: Int ->  m (Either AppError ValidAge)
+  validateAge :: Int ->  m ValidAge
 
-createUser :: (Monad m, UserStorage m, CheckUser m) => Text -> Int -> m (Either AppError User)
+createUser :: (Monad m, UserStorage m, CheckUser m) => Text -> Int -> m ()
 createUser uName uAge = do 
   validatedAge <- validateAge uAge
-  case validatedAge of
-    Right a -> saveUser (user uName a)
-    Left e -> return (Left e)
+  saveUser $ user uName validatedAge

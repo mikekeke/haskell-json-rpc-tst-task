@@ -10,6 +10,7 @@ module Models
   ( user
   , User
   , isLegalAge
+  , getId
   , ValidAge(..)
   , migrateAll
   ) where
@@ -40,6 +41,8 @@ isLegalAge userAge = userAge >= legalAge
 
 user :: Text -> ValidAge -> User
 user uName (ValidAge v) = User uName v
+
+getId = unSqlBackendKey . unUserKey
 
 instance ToJSON User where
   toJSON (User uName uAge) = object ["name" .= uName, "age" .= uAge]
