@@ -1,12 +1,11 @@
 module BusinessLogic where
 import Models
-import Control.Monad ((>=>))
 import Data.Text (Text)
 
 data AppError =
   IllegalUserAge Int
   | SqlFail Text
-  deriving (Show)
+  deriving (Show) -- todo IsString instance?
 
 class UserStorage m where
   saveUser :: User -> m ()

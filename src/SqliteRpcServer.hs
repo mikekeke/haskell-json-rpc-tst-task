@@ -25,14 +25,12 @@ import           Conduit                    (ResourceT, runResourceT)
 import           Control.Monad.Catch
 import           Control.Monad.Except       (ExceptT, throwError)
 import           Data.Aeson                 (ToJSON, object, toJSON, (.=))
-import           Data.Bool                  (bool)
 import           Data.Maybe                 (fromMaybe)
 import           Database.Persist           (entityVal, insert, insert_,
                                              selectList)
 import           Database.Persist.Sql       (SqlBackend)
 import           Database.Persist.Sqlite    (runMigration, runSqlConn,
                                              withSqliteConn)
-import           GHC.IO                     (catchAny)
 
 type SqlConn = Text -- mk as text like from those blogpost
 
@@ -43,13 +41,16 @@ instance UserStorage (ExceptT RpcError SqlLayer) where
     r <- lift $ try (insert u)
     either onError onSuccess r
     where
-      onError (e :: SomeException) =
+    -- todo generate uuid4 and append to log
+      onError (e :: SomeException) = 
         logErrorN (toText e) >> throwError (rpcError (-32001) "Failed to add user. Error UUID = XXX")
       onSuccess uId = logInfoN (mconcat ["New user added with ID ", toText . getId $ uId])
 
+-- fixme
 --  getAll = fmap entityVal <$> lift (selectList [] [])
 --  getAll = lift act where
 --    act = fmap entityVal <$> selectList [] []
+
 instance CheckUser (ExceptT RpcError SqlLayer) where
   validateAge a = do
     unless (isLegalAge a) $ throwError (rpcError (-32000) (toText $ IllegalUserAge a))
