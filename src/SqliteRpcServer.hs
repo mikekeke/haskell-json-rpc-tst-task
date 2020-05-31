@@ -16,7 +16,7 @@ import qualified Data.ByteString.Lazy.Char8 as B
 
 import           Data.Text
 import           Logging
-import           Models
+import           Domain
 import           Network.JsonRpc.Server
 import           System.IO                  (BufferMode (LineBuffering),
                                              hSetBuffering, stdout)
@@ -34,7 +34,7 @@ import           Database.Persist.Sqlite    (runMigration, runSqlConn,
                                              withSqliteConn)
 import           System.Exit                (exitSuccess)
 
-type SqlConn = Text -- mk as text like in those blogpost
+type SqlConn = Text -- todo (?) mk as text like in those blogpost (those blogpost: https://etorreborre.blogspot.com/2019/09/processing-csv-files-in-haskell.html)
 
 type SqlLayer = ReaderT SqlBackend (LoggingT (ResourceT IO))
 
@@ -73,9 +73,9 @@ instance UserStorage (ExceptT RpcError SqlLayer) where
       onSuccess = return . fmap entityVal
 
 instance CheckUser (ExceptT RpcError SqlLayer) where
-  validateAge a = do
-    unless (isLegalAge a) $ throwError (rpcError validateUserRpcErrCode (toText $ IllegalUserAge a))
-    return $ ValidAge a
+  validateAge a = either onError return (parseAge a)
+    where
+      onError = throwError . rpcError validateUserRpcErrCode . toText
 
 addUserMet = toMethod "addUser" f (Required "name" :+: Required "age" :+: ())
   where

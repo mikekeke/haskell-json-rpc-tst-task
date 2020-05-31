@@ -1,11 +1,8 @@
 module BusinessLogic where
 
 import           Data.Text (Text)
-import           Models
+import           Domain
 
-data AppError
-  = IllegalUserAge Int
-  deriving (Show) -- todo IsString instance?
 
 class UserStorage m where
   saveUser :: User -> m ()
