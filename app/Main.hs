@@ -1,6 +1,6 @@
 module Main where
 
-import           SqliteRpcServer
+import RpcServer
 
 main :: IO ()
-main = runSqliteServer
+main = startRpcServer
